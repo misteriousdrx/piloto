@@ -21,8 +21,8 @@ import org.springframework.context.annotation.Primary;
 @EnableDynamoDBRepositories(basePackages = "com.example.piloto.repository")
 public class DynamoDBConfiguration {
 
-    private String amazonDynamoDBAccessKey = "ABC";
-    private String amazonDynamoDBSecretKey = "DEF";
+    private String amazonDynamoDBAccessKey = "";
+    private String amazonDynamoDBSecretKey = "";
 
 
     @Bean

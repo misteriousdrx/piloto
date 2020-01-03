@@ -11,6 +11,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.*;
+import java.util.function.Predicate;
 
 import static org.springframework.web.bind.annotation.RequestMethod.*;
 
@@ -32,6 +33,7 @@ public class PilotoController {
         Map<String, String> massa4 = new HashMap<>();
         Map<String, String> massa5 = new HashMap<>();
         Map<String, String> massa6 = new HashMap<>();
+        Map<String, String> massa7 = new HashMap<>();
 
 
         massa1.put("agencia", "1500");
@@ -58,6 +60,10 @@ public class PilotoController {
         massa6.put("conta", "09876");
         massa6.put("dac", "5");
 
+        massa7.put("agencia", "1500");
+        massa7.put("conta", "01010");
+        massa7.put("dac", "1");
+
         whitelist.add(massa1);
         whitelist.add(massa2);
         whitelist.add(massa3);
@@ -66,6 +72,7 @@ public class PilotoController {
 
         blacklist.add(massa3);
         blacklist.add(massa6);
+        blacklist.add(massa7);
 
     }
 
@@ -106,13 +113,27 @@ public class PilotoController {
 
         if (estrategia.isPresent()) {
 
-            boolean containsWhitelist = estrategia.get().getWhitelist().contains(allRequestParams);
+            return ResponseEntity.ok(isPiloto(allRequestParams, estrategia));
 
-            boolean containsBlacklist = estrategia.get().getBlacklist().contains(allRequestParams);
+        } else {
 
-            boolean isPilot = (containsWhitelist && !containsBlacklist);
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
 
-            return ResponseEntity.ok(isPilot);
+        }
+
+    }
+
+    @RequestMapping(method = GET, path = "/piloto/{idPiloto}/pilotos")
+    public ResponseEntity<?> getPilotoByIdAndRule(@PathVariable String idPiloto, @RequestParam Map<String,String> allRequestParams) {
+
+        Optional<Estrategia> estrategia = estrategiaRepository.findById(idPiloto);
+        HashMap<String, String> agencia = new HashMap<String, String>() {{ put("agencia", Optional.ofNullable(allRequestParams.get("agencia")).orElse("")); }};
+
+        if (estrategia.isPresent()) {
+
+            return ResponseEntity.ok(isPiloto(estrategia, piloto -> {
+                return !piloto.getBlacklist().contains(allRequestParams) && piloto.getWhitelist().contains(agencia);
+            }));
 
         } else {
 
@@ -127,14 +148,36 @@ public class PilotoController {
 
         Estrategia estrategia = new Estrategia();
 
+//        List<Map<String, String>> list = new ArrayList<>();
+//
+//        HashMap<String, String> map = new HashMap<String, String>() {{
+//            put("agencia", "1500");
+//        }};
+//
+//        list.add(map);
+
         estrategia.setNome("Peloto");
         estrategia.setDescricao("desc");
         estrategia.setDataCriacao(new Date());
+//        estrategia.setWhitelist(list);
         estrategia.setWhitelist(whitelist);
         estrategia.setBlacklist(blacklist);
 
         return ResponseEntity.ok(estrategiaRepository.save(estrategia));
 
+
+    }
+
+    private boolean isPiloto(@RequestParam Map<String, String> allRequestParams, Optional<Estrategia> estrategia) {
+        return estrategia.filter(piloto -> !piloto.getBlacklist().contains(allRequestParams) && piloto.getWhitelist().contains(allRequestParams)).isPresent();
+    }
+
+
+    private boolean isPiloto(Optional<Estrategia> estrategia, Predicate<Estrategia> predicate) {
+
+        Objects.requireNonNull(predicate, "Predicado deve ser informado");
+
+        return predicate.test(estrategia.get());
 
     }
 
